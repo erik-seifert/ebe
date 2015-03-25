@@ -6,8 +6,8 @@
       var graph = new joint.dia.Graph;
       var paper = new joint.dia.Paper({
           el: $('#drawer'),
-          width: 2024,
-          height: 2000,
+          width: 1200,
+          height: 5000,
           gridSize: 1,
           model: graph
       });
@@ -30,7 +30,7 @@
               rows++;
           count = 0 ;
           }
-          elements[ele.id] = ebe_element(graph,types[ele.type],300*count ,220*rows,ele.label,ele);
+          elements[ele.id] = ebe_element(graph,types[ele.type],(300*count) + 100 ,220*rows,ele.label,ele);
           count++ ;
           if ( (count % maxRows) == 0 ) {
               rows++ ;
@@ -46,7 +46,7 @@
                   if ( elements[v.link] && elements[ele.id].id ) {
                       relations.push( ebe_relation(joint.dia.Link,elements[ele.id].id,elements[v.link].id,v.label,v.options) )
                   } else {
-                      console.log("Not found: " + v.link );
+                      //console.log("Not found: " + v.link );
                   }
               });
           }
@@ -79,15 +79,14 @@ var ebe_relation = function(c,source,target,label,opts) {
     }
     var link = new c({source : {id : source}, 
                   target : {id:target},    
-                  router: { name: 'manhattan' },
+                  router: { name: 'metro' },
                   connector: { name: 'rounded' }, 
                   labels: [
-                    { position: .5, attrs: { text: { text: label } } }
+                    { position: .5, attrs: { text: { text: label, fill: 'white', 'font-family': 'sans-serif' }, rect: { stroke: '#F39C12', 'stroke-width': 20, rx: 5, ry: 5 } } }
                   ],
                   attrs:{ 
                       '.marker-target': { fill: 'yellow', d: 'M 10 0 L 0 5 L 10 10 z' },
                       '.connection' : { stroke : color  }
                  }});
-
     return link ;
 }
