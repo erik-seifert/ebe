@@ -2,8 +2,8 @@
 
 function ebe_enable() {
 	db_update('system')->fields(array(
-      'weight' => 100,
+      'weight' => 1000,
     ))
-    ->condition('name', 'entity_birds_eye', '=')
+    ->condition('name', 'ebe', '=')
     ->execute();
 }

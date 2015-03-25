@@ -21,6 +21,7 @@ function ebe_menu_page() {
       if ( isset($i['graph info']) ) $simpleInfo[] = $i['graph info'] ;
     }
   }
+  dsm($simpleInfo);
   drupal_add_js(array('ebe_erd' => $simpleInfo ) , 'setting' ) ;
   drupal_add_js(drupal_get_path( 'module', 'ebe').'/js/drawer-erd.js');
   return "<div id='drawer'></div>" ;
