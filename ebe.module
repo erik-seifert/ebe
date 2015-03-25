@@ -81,7 +81,7 @@ function ebe_entity_info_alter(&$entity_info) {
     );
     $props = entity_get_property_info($entity);
     foreach (  $props['properties'] as $prop => $propInfo ) {
-    	if ( !isset($propInfo['type']) ) $propInfo['type'] = t('Unkown') ;
+    	if ( !isset($propInfo['type']) ) $propInfo['type'] = 'string';
       $entity_info[$entity]['graph info']['attributes'][] = $propInfo['label'] . ':' . $propInfo['type'] ; 
     }
     if ( $info['bundles'] ) {
