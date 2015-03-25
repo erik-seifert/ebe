@@ -1,0 +1,4 @@
+name = Entity Birds Eye
+package = Devel
+core = 7.x
+dependencies[] = libraries

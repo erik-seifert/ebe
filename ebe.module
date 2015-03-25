@@ -1,0 +1,145 @@
+<?php
+
+function ebe_menu() {
+  $items['admin/reports/ebe'] = array(
+    'page callback' => 'ebe_menu_page',
+    'access arguments' => array(TRUE),
+    'title' => t('Entity Diagrams'),
+    'type' => MENU_NORMAL_ITEM  
+  );
+  return $items ;
+}
+
+function ebe_menu_page() {
+  $library = libraries_detect('jointjs');
+  libraries_load_files($library) ;
+  $infos = entity_get_info();
+  $simpleInfo = array();
+  foreach ( $infos as $type => $info ) {
+    if ( isset($info['graph info']) ) $simpleInfo[] = $info['graph info'] ;
+    foreach ( $info['bundles'] as $t => $i ) {
+      if ( isset($i['graph info']) ) $simpleInfo[] = $i['graph info'] ;
+    }
+  }
+  drupal_add_js(array('ebe_erd' => $simpleInfo ) , 'setting' ) ;
+  drupal_add_js(drupal_get_path( 'module', 'ebe').'/js/drawer-erd.js');
+  return "<div id='drawer'></div>" ;
+}
+
+function ebe_libraries_info() {
+  $libraries['jointjs'] = array(
+    'name' => 'JointJS',
+    'vendor url' => 'http://jointjs.com/',
+    'download url' => 'http://jointjs.com/download',
+    'version arguments' => array(
+      'file' => 'joint.all.js', 
+      'pattern' => '@JointJS\s+v([0-9a-zA-Z\.-]+)@', 
+        //JointJS v0.9.3 
+      'lines' => 5,
+    ),
+    'files' => array(
+      'js' => array('joint.all.js'), 
+      'css' => array('joint.all.css')
+    ),
+  );
+  return $libraries;
+}
+
+function ebe_requirements($phase) {
+  switch ( $phase ) {
+    case 'runtime':
+      $library = libraries_detect("jointjs");
+      if ( isset($library['error message']) ) {
+        return array(
+          'jointjs' => array(
+            'title' => t('JointJS Library'),
+            'value' => $library['error message'],
+            'description' => t('Download JointJS Version <a target="_blank" href="@here">here</a>',array('@here' => $library['download url'])),
+            'severity' => REQUIREMENT_WARNING
+          )  
+        );
+      } else {
+        return array(
+          'jointjs' => array(
+            'title' => t('JointJS Library'),
+            'value' => $library['version'],
+            'severity' => REQUIREMENT_OK
+          )
+        );
+      }
+    break ;
+  }
+}
+
+function ebe_entity_info_alter(&$entity_info) {
+  foreach ( $entity_info as $entity => $info ) {
+    $entity_info[$entity]['graph info'] = array(
+      'type' => 'entity',
+      'label' => $info['label'],
+      'id' =>   $entity
+    );
+    $props = entity_get_property_info($entity);
+    foreach (  $props['properties'] as $prop => $propInfo ) {
+      $entity_info[$entity]['graph info']['attributes'][] = $propInfo['label'] . ':' . $propInfo['type'] ; 
+    }
+    if ( $info['bundles'] ) {
+      foreach ( $info['bundles'] as $bundle => $bundleInfo ) {
+        $entity_info[$entity]['bundles'][$bundle]['graph info'] = array(
+            'type' => 'bundle',
+            'label' => $bundleInfo['label'] ,
+            'id' => $entity . '__' . $bundle
+        );
+        $entity_info[$entity]['bundles'][$bundle]['graph info']['links_to'][] = array(
+          'link' => $entity_info[$entity]['graph info']['id'] ,
+          'type' => 'implements',
+          'label' => t('Implements')
+        );
+        if ( $entity == 'comment' ) {
+          $entity_info[$entity]['bundles'][$bundle]['graph info']['links_to'][] = array(
+            'link' =>  'node__' . $bundleInfo['node bundle'],
+            'type' => 'reference',
+            'label' => t('Reference')
+          );
+        } elseif ( $bundle == 'taxonomy_term' ) {
+          $entity_info[$entity]['bundles'][$bundle]['graph info']['links_to'][] = array(
+            'link' =>  'taxonomy_vocabulary__taxonomy_vocabulary',
+            'type' => 'implements',
+            'label' => t('Implements')
+          );
+        } elseif ( $entity == 'taxonomy_vocabulary' ) {
+          $entity_info[$entity]['bundles'][$bundle]['graph info']['links_to'][] = array(
+            'link' =>  'taxonomy_vocabulary',
+            'type' => 'implements',
+            'label' => t('Implements')
+          );
+        }
+        $data = $entity_info[$entity]['bundles'][$bundle]['graph info'];
+        $context = array('entity_type' => $entity , 'bundle' => $bundle,'info' => $entity_info[$entity]['bundles'][$bundle]);
+        drupal_alter('graph_info', $data, $context );
+        $entity_info[$entity]['bundles'][$bundle]['graph info'] = $data ;
+      } 
+    }
+  }
+}
+
+function ebe_graph_info_alter(&$graph_info,$context) {
+  $field_info =    field_info_instances($context['entity_type'], $context['bundle']) ;
+  $graph_info['attributes'] = array();
+  foreach ( $field_info as $field_name => $info ) {
+    $field_single_info = field_info_field($field_name) ;
+    if ( $field_single_info['type'] == 'entityreference' ) {
+      foreach ( $field_single_info['settings']['handler_settings']['target_bundles'] as $bundle => $label ) {
+        $graph_info['links_to'][] = array(
+          'link' => $field_single_info['settings']['target_type'] . '__' . $bundle ,
+          'type' => 'reference',
+          'label' => $field_name . ':' . $info['label'],
+          'options' => array('required' => $info['required'],'cardinality' => $field_single_info['cardinality'])
+        );
+      }
+    }
+    $graph_info['attributes'][] = array(
+      $info['label'] . ':' . $field_name . '('.$field_single_info['type'].') '
+    );
+  }
+  return $graph_info;
+}
