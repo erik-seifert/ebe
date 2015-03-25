@@ -30,9 +30,10 @@ function ebe_libraries_info() {
   $libraries['jointjs'] = array(
     'name' => 'JointJS',
     'vendor url' => 'http://jointjs.com/',
-    'download url' => 'http://jointjs.com/download',
+    'download url' => 'https://github.com/DavidDurman/joint',
+    'path' => 'dist',
     'version arguments' => array(
-      'file' => 'joint.all.js', 
+      'file' => 'dist/joint.all.js', 
       'pattern' => '@JointJS\s+v([0-9a-zA-Z\.-]+)@', 
         //JointJS v0.9.3 
       'lines' => 5,
@@ -80,6 +81,7 @@ function ebe_entity_info_alter(&$entity_info) {
     );
     $props = entity_get_property_info($entity);
     foreach (  $props['properties'] as $prop => $propInfo ) {
+    	if ( !isset($propInfo['type']) ) $propInfo['type'] = t('Unkown') ;
       $entity_info[$entity]['graph info']['attributes'][] = $propInfo['label'] . ':' . $propInfo['type'] ; 
     }
     if ( $info['bundles'] ) {
