@@ -20,16 +20,16 @@
       var count = 0 ;
       var elements = {};
       var relations = [];
-      var rows = -1;
-      var maxRows = 5 ;
+      var rows = 0;
+      var maxRows = 4 ;
       
       var lastType = eles[0].type ;
       
       jQuery.each(eles,function(index,ele){
-          if ( lastType != ele.type || ele.type == 'entity' ) {
-              rows++;
-          count = 0 ;
-          }
+//          if ( lastType != ele.type || ele.type == 'entity' ) {
+//              rows++;
+//              count = 0 ;
+//          }
           elements[ele.id] = ebe_element(graph,types[ele.type],(300*count) + 100 ,220*rows,ele.label,ele);
           count++ ;
           if ( (count % maxRows) == 0 ) {
@@ -45,8 +45,6 @@
                   if ( !v.options ) v.options = {} ;
                   if ( elements[v.link] && elements[ele.id].id ) {
                       relations.push( ebe_relation(joint.dia.Link,elements[ele.id].id,elements[v.link].id,v.label,v.options) )
-                  } else {
-                      //console.log("Not found: " + v.link );
                   }
               });
           }
@@ -65,8 +63,7 @@ var ebe_element = function(graph,elm, x, y, label,ele) {
         graph.addCell(cell);
         return cell;
     } catch ( e ) {
-        console.log(elm) ;
-        console.log(e) ;
+        
     }
     
 };

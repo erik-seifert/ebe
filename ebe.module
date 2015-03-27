@@ -1,29 +1,95 @@
 <?php
 
 function ebe_menu() {
-  $items['admin/reports/ebe'] = array(
-    'page callback' => 'ebe_menu_page',
-    'access arguments' => array(TRUE),
-    'title' => t('Entity Diagrams'),
-    'type' => MENU_NORMAL_ITEM  
+	$items['admin/reports/ebe'] = array(
+			'page callback' => 'ebe_menu_page',
+			'access arguments' => array(TRUE),
+			'title' => t('Entity Diagrams'),
+			'type' => MENU_NORMAL_ITEM
+	);
+	
+	$items['admin/reports/ebe/display'] = array(
+			'page callback' => 'ebe_menu_page',
+			'page arguments' => array(4),
+			'access arguments' => array(TRUE),
+			'title' => t('Entity Diagrams'),
+			'type' => MENU_DEFAULT_LOCAL_TASK
+	);
+
+  $items['admin/reports/ebe/config'] = array(
+  		'page callback' => 'drupal_get_form',
+  		'page arguments' => array('ebe_config'),
+  		'access arguments' => array(TRUE),
+  		'title' => t('Settings'),
+  		'type' => MENU_LOCAL_TASK
   );
   return $items ;
 }
 
+function ebe_config(){
+	$form = array();
+	$info = entity_get_info();
+	$config = _ebe_get_config();
+	$form['#tree'] = true ;
+	$form['config']['show_entity'] = array(
+			'#type' => 'checkbox',
+			'#title' => t('Show entity type'),
+			'#return_value' => 1,
+			'#default_value' => ($config['show_entity']) ? 1 : 0,
+			'#description' => t('Show all entity types')
+	);
+	$form['config']['disable_entity'] = array(
+			'#type' => 'fieldset',
+			'#title' => t('Disable entities'),
+	);
+	foreach ( $info as $entity_type => $entity_type_info ) {
+		$form['config']['disable_entity'][$entity_type] = array(
+				'#tree' => true ,
+				'#type' => 'checkbox',
+				'#title' => $entity_type_info['label'],
+				'#default_value' => ($config['disable_entity'][$entity_type]) ? $config['disable_entity'][$entity_type] : 0,
+				'#return_value' => 1
+		);
+	}
+	$form['submit'] = array(
+			'#value' => t('Save settings'),
+			'#type'  => 'submit'
+	);
+	return $form ;
+}
+
+function ebe_config_submit($form,$form_state) {
+	variable_set('ebe_config',$form_state['values']['config']);
+}
+
 function ebe_menu_page() {
+  $config = _ebe_get_config();
+  entity_info_cache_clear();
   $library = libraries_detect('jointjs');
   libraries_load_files($library) ;
   $infos = entity_get_info();
   $simpleInfo = array();
   foreach ( $infos as $type => $info ) {
-    if ( isset($info['graph info']) ) $simpleInfo[] = $info['graph info'] ;
-    foreach ( $info['bundles'] as $t => $i ) {
-      if ( isset($i['graph info']) ) $simpleInfo[] = $i['graph info'] ;
+    if (  ( (isset($config['show_entity']) && $config['show_entity'] == '1') && $config['disable_entity'][$type] != '1') ) {
+      if ( isset($info['graph info']) ) $simpleInfo[] = $info['graph info'] ;
+    }
+    if ( !isset($config['disable_entity'][$type]) || $config['disable_entity'][$type] == '0' ) {
+	    foreach ( $info['bundles'] as $t => $i ) {
+	      if ( isset($i['graph info']) ) $simpleInfo[] = $i['graph info'] ;
+	    }
     }
   }
   drupal_add_js(array('ebe_erd' => $simpleInfo ) , 'setting' ) ;
   drupal_add_js(drupal_get_path( 'module', 'ebe').'/js/drawer-erd.js');
   return "<div id='drawer'></div>" ;
+}
+
+function _ebe_get_config() {
+  $defaults = array(
+      'show_entity' => false
+  );
+  $config = variable_get('ebe_config',array());
+  return array_merge($defaults,$config) ;
 }
 
 function ebe_libraries_info() {
@@ -44,6 +110,10 @@ function ebe_libraries_info() {
     ),
   );
   return $libraries;
+}
+
+function _ebe_is_allowed_entity($entity_type) {
+  return in_array( $entity_type, array('node','taxonomy_term','paragraphs_item')) ;
 }
 
 function ebe_requirements($phase) {
@@ -80,9 +150,11 @@ function ebe_entity_info_alter(&$entity_info) {
       'id' =>   $entity
     );
     $props = entity_get_property_info($entity);
-    foreach (  $props['properties'] as $prop => $propInfo ) {
-    	if ( !isset($propInfo['type']) ) $propInfo['type'] = 'string';
-      $entity_info[$entity]['graph info']['attributes'][] = $propInfo['label'] . ':' . $propInfo['type'] ; 
+    if ( $props && is_array($props) && isset($props['properties']) ) {
+      foreach (  $props['properties'] as $prop => $propInfo ) {
+        if ( !isset($propInfo['type']) ) $propInfo['type'] = 'string';
+        $entity_info[$entity]['graph info']['attributes'][] = $propInfo['label'] . ':' . $propInfo['type'] ; 
+      }
     }
     if ( $info['bundles'] ) {
       foreach ( $info['bundles'] as $bundle => $bundleInfo ) {
@@ -131,8 +203,27 @@ function ebe_graph_info_alter(&$graph_info,$context) {
     $field_single_info = field_info_field($field_name) ;
     if ( $field_single_info['type'] == 'entityreference' ) {
       foreach ( $field_single_info['settings']['handler_settings']['target_bundles'] as $bundle => $label ) {
-        $graph_info['links_to'][] = array(
+       $graph_info['links_to'][] = array(
           'link' => $field_single_info['settings']['target_type'] . '__' . $bundle ,
+          'type' => 'reference',
+          'label' => $field_name . ':' . $info['label'],
+          'options' => array('required' => $info['required'],'cardinality' => $field_single_info['cardinality'])
+        );
+      }
+    } elseif ( $field_single_info['type'] == 'paragraphs' ) {
+      foreach ( $info['settings']['allowed_bundles'] as $key => $bundle_info ) {
+        if ( $bundle_info != $key ) continue ;
+        $graph_info['links_to'][] = array(
+            'link' => 'paragraphs_item__' . $key ,
+            'type' => 'reference',
+            'label' => $field_name . ':' . $info['label'],
+            'options' => array('required' => $info['required'],'cardinality' => $field_single_info['cardinality'])
+        );
+      }
+    } elseif ( $field_single_info['type'] == 'taxonomy_term_reference' ) {
+      foreach ( $field_single_info['settings']['allowed_values'] as $key => $voc_info ) {
+        $graph_info['links_to'][] = array(
+          'link' => 'taxonomy_term__' . $voc_info['vocabulary'] ,
           'type' => 'reference',
           'label' => $field_name . ':' . $info['label'],
           'options' => array('required' => $info['required'],'cardinality' => $field_single_info['cardinality'])
