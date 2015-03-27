@@ -53,7 +53,7 @@
       
       jQuery('#drawer').after('<button id="save">Save</button>');
       jQuery('#save').on('click',function(){
-    	  saveSvgAsPng(paper.svg, "diagram.png");
+        saveSvgAsPng(paper.svg, "diagram.png");
       })
     }
   };
@@ -77,6 +77,13 @@ var ebe_relation = function(c,source,target,label,opts) {
         color =  'red';
     } else {
         color = '#333' ;
+    }
+    if ( opts.cardinality ) {
+      if ( opts.cardinality == -1 ) {
+        label += " 1..n";
+      } else {
+        label += " 1.." + opts.cardinality;
+      }
     }
     var link = new c({source : {id : source}, 
                   target : {id:target},    

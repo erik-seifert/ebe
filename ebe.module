@@ -2,33 +2,36 @@
 
 function ebe_menu() {
   $items['admin/reports/ebe'] = array(
-      'page callback' => 'ebe_menu_page',
-      'access arguments' => array("access site reports"),
-      'title' => t('Entity Diagrams'),
-      'type' => MENU_NORMAL_ITEM
-  );
-  
-  $items['admin/reports/ebe/display'] = array(
-      'page callback' => 'ebe_menu_page',
-      'access arguments' => array("access site reports"),
-      'title' => t('Entity Diagrams'),
-      'type' => MENU_DEFAULT_LOCAL_TASK
-  );
-  
-  $items['admin/reports/ebe/springy'] = array(
-  		'page callback' => 'ebe_menu_page',
-  		'page arguments' => array('springy'),
-  		'access arguments' => array("access site reports"),
-  		'title' => t('Entity Diagrams Springy'),
-  		'type' => MENU_LOCAL_TASK
+    'page callback' => 'ebe_menu_page',
+    'access arguments' => array("access site reports"),
+    'title' => t('Entity Diagrams'),
+    'type' => MENU_NORMAL_ITEM
   );
 
-  $items['admin/reports/ebe/config'] = array(
-      'page callback' => 'drupal_get_form',
-      'page arguments' => array('ebe_config'),
+  $items['admin/reports/ebe/display'] = array(
+    'page callback' => 'ebe_menu_page',
+    'access arguments' => array("access site reports"),
+    'title' => t('Entity Diagrams'),
+    'type' => MENU_DEFAULT_LOCAL_TASK
+  );
+
+  $library = libraries_detect("springy");
+  if ( !isset($library['error message']) ) {
+    $items['admin/reports/ebe/springy'] = array(
+      'page callback' => 'ebe_menu_page',
+      'page arguments' => array('springy'),
       'access arguments' => array("access site reports"),
-      'title' => t('Settings'),
+      'title' => t('Entity Diagrams Springy'),
       'type' => MENU_LOCAL_TASK
+    );
+  }
+
+  $items['admin/reports/ebe/config'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ebe_config'),
+    'access arguments' => array("access site reports"),
+    'title' => t('Settings'),
+    'type' => MENU_LOCAL_TASK
   );
   return $items ;
 }
@@ -39,42 +42,42 @@ function ebe_config(){
   $config = _ebe_get_config();
   $form['#tree'] = true ;
   $form['config']['show_entity'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Show entity type'),
-      '#return_value' => 1,
-      '#default_value' => ($config['show_entity']) ? 1 : 0,
-      '#description' => t('Show all entity types')
+    '#type' => 'checkbox',
+    '#title' => t('Show entity type'),
+    '#return_value' => 1,
+    '#default_value' => ($config['show_entity']) ? 1 : 0,
+    '#description' => t('Show all entity types')
   );
   $form['config']['disable_entity'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Disable entities'),
+    '#type' => 'fieldset',
+    '#title' => t('Disable entities'),
   );
   foreach ( $info as $entity_type => $entity_type_info ) {
     $form['config']['disable_entity'][$entity_type] = array(
-        '#tree' => true ,
-        '#type' => 'checkbox',
-        '#title' => $entity_type_info['label'],
-        '#default_value' => ($config['disable_entity'][$entity_type]) ? $config['disable_entity'][$entity_type] : 0,
-        '#return_value' => 1
+      '#tree' => true ,
+      '#type' => 'checkbox',
+      '#title' => $entity_type_info['label'],
+      '#default_value' => ($config['disable_entity'][$entity_type]) ? $config['disable_entity'][$entity_type] : 0,
+      '#return_value' => 1
     );
   }
   $form['config']['paper'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Paper settings')
+    '#type' => 'fieldset',
+    '#title' => t('Paper settings')
   );
   $form['config']['paper']['width'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Paper settings'),
-      '#default_value' => ($config['paper']['width'])
+    '#type' => 'textfield',
+    '#title' => t('Paper settings'),
+    '#default_value' => ($config['paper']['width'])
   );
   $form['config']['paper']['height'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Paper settings'),
-      '#default_value' => ($config['paper']['height'])
+    '#type' => 'textfield',
+    '#title' => t('Paper settings'),
+    '#default_value' => ($config['paper']['height'])
   );
   $form['submit'] = array(
-      '#value' => t('Save settings'),
-      '#type'  => 'submit'
+    '#value' => t('Save settings'),
+    '#type'  => 'submit'
   );
   return $form ;
 }
@@ -86,41 +89,45 @@ function ebe_config_submit($form,$form_state) {
 function ebe_menu_page($view = 'jointjs') {
   $config = _ebe_get_config();
   entity_info_cache_clear();
-  
   $infos = entity_get_info();
+
   $simpleInfo = array();
   foreach ( $infos as $type => $info ) {
     if (  ( (isset($config['show_entity']) && $config['show_entity'] == '1') && $config['disable_entity'][$type] != '1') ) {
-      if ( isset($info['graph info']) ) $simpleInfo[] = $info['graph info'] ;
+      if ( isset($info['graph info']) )  {
+        $simpleInfo[] = $info['graph info'] ;
+      }
     }
     if ( !isset($config['disable_entity'][$type]) || $config['disable_entity'][$type] == '0' ) {
       foreach ( $info['bundles'] as $t => $i ) {
-        if ( isset($i['graph info']) ) $simpleInfo[] = $i['graph info'] ;
+        if ( isset($i['graph info']) )  {
+          $simpleInfo[] = $i['graph info'] ;
+        }
       }
     }
   }
   drupal_add_js(array('ebe_erd' => array('config' => $config, 'items' => $simpleInfo )) , 'setting' ) ;
   if ( $view == 'jointjs') {
-  	$library = libraries_detect('jointjs');
-  	libraries_load_files($library) ;
-  	drupal_add_js(drupal_get_path( 'module', 'ebe').'/js/drawer-erd.js');
-  	return "<div id='drawer' width='".$config['paper']['width']."' height='".$config['paper']['height']."'></div>" ;
+    $library = libraries_detect('jointjs');
+    libraries_load_files($library) ;
+    drupal_add_js(drupal_get_path( 'module', 'ebe').'/js/drawer-erd.js');
+    return "<div id='drawer' width='".$config['paper']['width']."' height='".$config['paper']['height']."'></div>" ;
   } elseif ( $view == 'springy' ) {
-  	$library = libraries_detect('springy');
-  	libraries_load_files($library) ;
-  	drupal_add_js(drupal_get_path( 'module', 'ebe').'/js/drawer-forced-layout.js');
-  	return "<canvas id='drawer' width='".$config['paper']['width']."' height='".$config['paper']['height']."'></canvas>" ;
+    $library = libraries_detect('springy');
+    libraries_load_files($library) ;
+    drupal_add_js(drupal_get_path( 'module', 'ebe').'/js/drawer-forced-layout.js');
+    return "<canvas id='drawer' width='".$config['paper']['width']."' height='".$config['paper']['height']."'></canvas>" ;
   } 
 }
 
 function _ebe_get_config() {
   $defaults = array(
-      'show_entity' => false,
-      'paper' => array(
-          'width' => 1200,
-          'height' => 3000,
-      		'columns' => 4
-      )
+    'show_entity' => false,
+    'paper' => array(
+      'width' => 1200,
+      'height' => 3000,
+      'columns' => 4
+    )
   );
   $config = variable_get('ebe_config',array());
   return drupal_array_merge_deep($defaults,$config) ;
@@ -143,17 +150,17 @@ function ebe_libraries_info() {
     ),
   );
   $libraries['springy'] = array(
-  		'name' => 'Springy',
-  		'vendor url' => 'http://getspringy.com/',
-  		'download url' => 'https://github.com/dhotson/springy',
-  		'version arguments' => array(
-  				'file' => 'springy.js',
-  				'pattern' => '@Springy\s+v([0-9a-zA-Z\.-]+)@',
-  				'lines' => 5,
-  		),
-  		'files' => array(
-  				'js' => array('springy.js','springyui.js')
-  		),
+    'name' => 'Springy',
+    'vendor url' => 'http://getspringy.com/',
+    'download url' => 'https://github.com/dhotson/springy',
+    'version arguments' => array(
+      'file' => 'springy.js',
+      'pattern' => '@Springy\s+v([0-9a-zA-Z\.-]+)@',
+      'lines' => 5,
+    ),
+    'files' => array(
+      'js' => array('springy.js','springyui.js')
+    ),
   );
   return $libraries;
 }
@@ -171,7 +178,7 @@ function ebe_requirements($phase) {
             'title' => t('JointJS Library'),
             'value' => $library['error message'],
             'description' => t('Download JointJS Version <a target="_blank" href="@here">here</a>',array('@here' => $library['download url'])),
-            'severity' => REQUIREMENT_INFO
+            'severity' => REQUIREMENT_WARNING
           );
       } else {
         $messages['jointjs'] = array(
@@ -183,18 +190,18 @@ function ebe_requirements($phase) {
       
       $library = libraries_detect("springy");
       if ( isset($library['error message']) ) {
-      	$messages['springy'] = array(
-      			'title' => t('Springy Library'),
-      			'value' => $library['error message'],
-      			'description' => t('Download Springy Version <a target="_blank" href="@here">here</a>',array('@here' => $library['download url'])),
-      			'severity' => REQUIREMENT_INFO
-      	);
+        $messages['springy'] = array(
+            'title' => t('Springy Library'),
+            'value' => $library['error message'],
+            'description' => t('Download Springy Version <a target="_blank" href="@here">here</a>',array('@here' => $library['download url'])),
+            'severity' => REQUIREMENT_INFO
+        );
       } else {
-      	$messages['springy'] = array(
-      			'title' => t('Springy Library'),
-      			'value' => $library['version'],
-      			'severity' => REQUIREMENT_OK
-      	);
+        $messages['springy'] = array(
+            'title' => t('Springy Library'),
+            'value' => $library['version'],
+            'severity' => REQUIREMENT_OK
+        );
       }
       
       return $messages ;
@@ -212,7 +219,9 @@ function ebe_entity_info_alter(&$entity_info) {
     $props = entity_get_property_info($entity);
     if ( $props && is_array($props) && isset($props['properties']) ) {
       foreach (  $props['properties'] as $prop => $propInfo ) {
-        if ( !isset($propInfo['type']) ) $propInfo['type'] = 'string';
+        if ( !isset($propInfo['type']) )  {
+          $propInfo['type'] = 'string';
+        }
         $entity_info[$entity]['graph info']['attributes'][] = $propInfo['label'] . ':' . $propInfo['type'] ; 
       }
     }
@@ -272,7 +281,9 @@ function ebe_graph_info_alter(&$graph_info,$context) {
       }
     } elseif ( $field_single_info['type'] == 'paragraphs' ) {
       foreach ( $info['settings']['allowed_bundles'] as $key => $bundle_info ) {
-        if ( $bundle_info != $key ) continue ;
+        if ( $bundle_info != $key ) {
+          continue ;
+        }
         $graph_info['links_to'][] = array(
             'link' => 'paragraphs_item__' . $key ,
             'type' => 'reference',
@@ -288,6 +299,27 @@ function ebe_graph_info_alter(&$graph_info,$context) {
           'label' => $field_name . ':' . $info['label'],
           'options' => array('required' => $info['required'],'cardinality' => $field_single_info['cardinality'])
         );
+      }
+    }  elseif ( $field_single_info['type'] == 'file' ) {
+      if ( module_exists('file_entity') ) {
+        foreach ( $info['widget']['settings']['allowed_types'] as $key => $file_info ) {
+          if ( $file_info != $key )  {
+            continue ;
+          }
+          $graph_info['links_to'][] = array(
+              'link' => 'file__' . $file_info ,
+              'type' => 'reference',
+              'label' => $field_name . ':' . $info['label'],
+              'options' => array('required' => $info['required'],'cardinality' => $field_single_info['cardinality'])
+          );
+        }
+      } else {
+          $graph_info['links_to'][] = array(
+              'link' => $info['entity_type'] . '__' . $info['bundle'],
+              'type' => 'reference',
+              'label' => $field_name . ':' . $info['label'],
+              'options' => array('required' => $info['required'],'cardinality' => $field_single_info['cardinality'])
+          );
       }
     }
     $graph_info['attributes'][] = array(
