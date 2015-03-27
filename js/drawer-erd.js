@@ -1,13 +1,14 @@
 (function ($) {
   Drupal.behaviors.drawerErd = {
     attach: function (context, settings) {     
-      var eles = settings.ebe_erd ;
-
+      var eles = settings.ebe_erd.items ;
+      var config = settings.ebe_erd.config ;
+      
       var graph = new joint.dia.Graph;
       var paper = new joint.dia.Paper({
           el: $('#drawer'),
-          width: 1200,
-          height: 5000,
+          width: config.paper.width,
+          height: config.paper.height,
           gridSize: 1,
           model: graph
       });

@@ -1,65 +1,79 @@
 <?php
 
 function ebe_menu() {
-	$items['admin/reports/ebe'] = array(
-			'page callback' => 'ebe_menu_page',
-			'access arguments' => array(TRUE),
-			'title' => t('Entity Diagrams'),
-			'type' => MENU_NORMAL_ITEM
-	);
-	
-	$items['admin/reports/ebe/display'] = array(
-			'page callback' => 'ebe_menu_page',
-			'page arguments' => array(4),
-			'access arguments' => array(TRUE),
-			'title' => t('Entity Diagrams'),
-			'type' => MENU_DEFAULT_LOCAL_TASK
-	);
+  $items['admin/reports/ebe'] = array(
+      'page callback' => 'ebe_menu_page',
+      'access arguments' => array(TRUE),
+      'title' => t('Entity Diagrams'),
+      'type' => MENU_NORMAL_ITEM
+  );
+  
+  $items['admin/reports/ebe/display'] = array(
+      'page callback' => 'ebe_menu_page',
+      'page arguments' => array(4),
+      'access arguments' => array(TRUE),
+      'title' => t('Entity Diagrams'),
+      'type' => MENU_DEFAULT_LOCAL_TASK
+  );
 
   $items['admin/reports/ebe/config'] = array(
-  		'page callback' => 'drupal_get_form',
-  		'page arguments' => array('ebe_config'),
-  		'access arguments' => array(TRUE),
-  		'title' => t('Settings'),
-  		'type' => MENU_LOCAL_TASK
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('ebe_config'),
+      'access arguments' => array(TRUE),
+      'title' => t('Settings'),
+      'type' => MENU_LOCAL_TASK
   );
   return $items ;
 }
 
 function ebe_config(){
-	$form = array();
-	$info = entity_get_info();
-	$config = _ebe_get_config();
-	$form['#tree'] = true ;
-	$form['config']['show_entity'] = array(
-			'#type' => 'checkbox',
-			'#title' => t('Show entity type'),
-			'#return_value' => 1,
-			'#default_value' => ($config['show_entity']) ? 1 : 0,
-			'#description' => t('Show all entity types')
-	);
-	$form['config']['disable_entity'] = array(
-			'#type' => 'fieldset',
-			'#title' => t('Disable entities'),
-	);
-	foreach ( $info as $entity_type => $entity_type_info ) {
-		$form['config']['disable_entity'][$entity_type] = array(
-				'#tree' => true ,
-				'#type' => 'checkbox',
-				'#title' => $entity_type_info['label'],
-				'#default_value' => ($config['disable_entity'][$entity_type]) ? $config['disable_entity'][$entity_type] : 0,
-				'#return_value' => 1
-		);
-	}
-	$form['submit'] = array(
-			'#value' => t('Save settings'),
-			'#type'  => 'submit'
-	);
-	return $form ;
+  $form = array();
+  $info = entity_get_info();
+  $config = _ebe_get_config();
+  $form['#tree'] = true ;
+  $form['config']['show_entity'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Show entity type'),
+      '#return_value' => 1,
+      '#default_value' => ($config['show_entity']) ? 1 : 0,
+      '#description' => t('Show all entity types')
+  );
+  $form['config']['disable_entity'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Disable entities'),
+  );
+  foreach ( $info as $entity_type => $entity_type_info ) {
+    $form['config']['disable_entity'][$entity_type] = array(
+        '#tree' => true ,
+        '#type' => 'checkbox',
+        '#title' => $entity_type_info['label'],
+        '#default_value' => ($config['disable_entity'][$entity_type]) ? $config['disable_entity'][$entity_type] : 0,
+        '#return_value' => 1
+    );
+  }
+  $form['config']['paper'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Paper settings')
+  );
+  $form['config']['paper']['width'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Paper settings'),
+      '#default_value' => ($config['paper']['width'])
+  );
+  $form['config']['paper']['height'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Paper settings'),
+      '#default_value' => ($config['paper']['height'])
+  );
+  $form['submit'] = array(
+      '#value' => t('Save settings'),
+      '#type'  => 'submit'
+  );
+  return $form ;
 }
 
 function ebe_config_submit($form,$form_state) {
-	variable_set('ebe_config',$form_state['values']['config']);
+  variable_set('ebe_config',$form_state['values']['config']);
 }
 
 function ebe_menu_page() {
@@ -74,19 +88,23 @@ function ebe_menu_page() {
       if ( isset($info['graph info']) ) $simpleInfo[] = $info['graph info'] ;
     }
     if ( !isset($config['disable_entity'][$type]) || $config['disable_entity'][$type] == '0' ) {
-	    foreach ( $info['bundles'] as $t => $i ) {
-	      if ( isset($i['graph info']) ) $simpleInfo[] = $i['graph info'] ;
-	    }
+      foreach ( $info['bundles'] as $t => $i ) {
+        if ( isset($i['graph info']) ) $simpleInfo[] = $i['graph info'] ;
+      }
     }
   }
-  drupal_add_js(array('ebe_erd' => $simpleInfo ) , 'setting' ) ;
+  drupal_add_js(array('ebe_erd' => array('config' => $config, 'items' => $simpleInfo )) , 'setting' ) ;
   drupal_add_js(drupal_get_path( 'module', 'ebe').'/js/drawer-erd.js');
   return "<div id='drawer'></div>" ;
 }
 
 function _ebe_get_config() {
   $defaults = array(
-      'show_entity' => false
+      'show_entity' => false,
+      'paper' => array(
+          'width' => 2000,
+          'height' => 5000
+      )
   );
   $config = variable_get('ebe_config',array());
   return array_merge($defaults,$config) ;
@@ -231,7 +249,7 @@ function ebe_graph_info_alter(&$graph_info,$context) {
       }
     }
     $graph_info['attributes'][] = array(
-      $info['label'] . ':' . $field_name . '('.$field_single_info['type'].') '
+      $info['label'] . ':' . $field_name 
     );
   }
   return $graph_info;
