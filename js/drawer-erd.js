@@ -3,7 +3,7 @@
     attach: function (context, settings) {     
       var eles = settings.ebe_erd.items ;
       var config = settings.ebe_erd.config ;
-      
+
       var graph = new joint.dia.Graph;
       var paper = new joint.dia.Paper({
           el: $('#drawer'),
@@ -22,18 +22,16 @@
       var elements = {};
       var relations = [];
       var rows = 0;
-      var maxRows = 4 ;
+      var columns = config.paper.columns ;
+      
+      console.log(columns);
       
       var lastType = eles[0].type ;
       
       jQuery.each(eles,function(index,ele){
-//          if ( lastType != ele.type || ele.type == 'entity' ) {
-//              rows++;
-//              count = 0 ;
-//          }
           elements[ele.id] = ebe_element(graph,types[ele.type],(300*count) + 100 ,220*rows,ele.label,ele);
           count++ ;
-          if ( (count % maxRows) == 0 ) {
+          if ( (count % columns) == 0 ) {
               rows++ ;
               count = 0 ;
           }
@@ -52,6 +50,11 @@
       })
 
       _.each(relations, function(r) { graph.addCell(r); });
+      
+      jQuery('#drawer').after('<button id="save">Save</button>');
+      jQuery('#save').on('click',function(){
+    	  saveSvgAsPng(paper.svg, "diagram.png");
+      })
     }
   };
 })(jQuery);

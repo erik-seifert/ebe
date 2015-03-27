@@ -3,23 +3,30 @@
 function ebe_menu() {
   $items['admin/reports/ebe'] = array(
       'page callback' => 'ebe_menu_page',
-      'access arguments' => array(TRUE),
+      'access arguments' => array("access site reports"),
       'title' => t('Entity Diagrams'),
       'type' => MENU_NORMAL_ITEM
   );
   
   $items['admin/reports/ebe/display'] = array(
       'page callback' => 'ebe_menu_page',
-      'page arguments' => array(4),
-      'access arguments' => array(TRUE),
+      'access arguments' => array("access site reports"),
       'title' => t('Entity Diagrams'),
       'type' => MENU_DEFAULT_LOCAL_TASK
+  );
+  
+  $items['admin/reports/ebe/springy'] = array(
+  		'page callback' => 'ebe_menu_page',
+  		'page arguments' => array('springy'),
+  		'access arguments' => array("access site reports"),
+  		'title' => t('Entity Diagrams Springy'),
+  		'type' => MENU_LOCAL_TASK
   );
 
   $items['admin/reports/ebe/config'] = array(
       'page callback' => 'drupal_get_form',
       'page arguments' => array('ebe_config'),
-      'access arguments' => array(TRUE),
+      'access arguments' => array("access site reports"),
       'title' => t('Settings'),
       'type' => MENU_LOCAL_TASK
   );
@@ -76,11 +83,10 @@ function ebe_config_submit($form,$form_state) {
   variable_set('ebe_config',$form_state['values']['config']);
 }
 
-function ebe_menu_page() {
+function ebe_menu_page($view = 'jointjs') {
   $config = _ebe_get_config();
   entity_info_cache_clear();
-  $library = libraries_detect('jointjs');
-  libraries_load_files($library) ;
+  
   $infos = entity_get_info();
   $simpleInfo = array();
   foreach ( $infos as $type => $info ) {
@@ -94,20 +100,30 @@ function ebe_menu_page() {
     }
   }
   drupal_add_js(array('ebe_erd' => array('config' => $config, 'items' => $simpleInfo )) , 'setting' ) ;
-  drupal_add_js(drupal_get_path( 'module', 'ebe').'/js/drawer-erd.js');
-  return "<div id='drawer'></div>" ;
+  if ( $view == 'jointjs') {
+  	$library = libraries_detect('jointjs');
+  	libraries_load_files($library) ;
+  	drupal_add_js(drupal_get_path( 'module', 'ebe').'/js/drawer-erd.js');
+  	return "<div id='drawer' width='".$config['paper']['width']."' height='".$config['paper']['height']."'></div>" ;
+  } elseif ( $view == 'springy' ) {
+  	$library = libraries_detect('springy');
+  	libraries_load_files($library) ;
+  	drupal_add_js(drupal_get_path( 'module', 'ebe').'/js/drawer-forced-layout.js');
+  	return "<canvas id='drawer' width='".$config['paper']['width']."' height='".$config['paper']['height']."'></canvas>" ;
+  } 
 }
 
 function _ebe_get_config() {
   $defaults = array(
       'show_entity' => false,
       'paper' => array(
-          'width' => 2000,
-          'height' => 5000
+          'width' => 1200,
+          'height' => 3000,
+      		'columns' => 4
       )
   );
   $config = variable_get('ebe_config',array());
-  return array_merge($defaults,$config) ;
+  return drupal_array_merge_deep($defaults,$config) ;
 }
 
 function ebe_libraries_info() {
@@ -119,13 +135,25 @@ function ebe_libraries_info() {
     'version arguments' => array(
       'file' => 'dist/joint.all.js', 
       'pattern' => '@JointJS\s+v([0-9a-zA-Z\.-]+)@', 
-        //JointJS v0.9.3 
       'lines' => 5,
     ),
     'files' => array(
       'js' => array('joint.all.js'), 
       'css' => array('joint.all.css')
     ),
+  );
+  $libraries['springy'] = array(
+  		'name' => 'Springy',
+  		'vendor url' => 'http://getspringy.com/',
+  		'download url' => 'https://github.com/dhotson/springy',
+  		'version arguments' => array(
+  				'file' => 'springy.js',
+  				'pattern' => '@Springy\s+v([0-9a-zA-Z\.-]+)@',
+  				'lines' => 5,
+  		),
+  		'files' => array(
+  				'js' => array('springy.js','springyui.js')
+  		),
   );
   return $libraries;
 }
@@ -139,23 +167,37 @@ function ebe_requirements($phase) {
     case 'runtime':
       $library = libraries_detect("jointjs");
       if ( isset($library['error message']) ) {
-        return array(
-          'jointjs' => array(
+        $messages['jointjs'] = array(
             'title' => t('JointJS Library'),
             'value' => $library['error message'],
             'description' => t('Download JointJS Version <a target="_blank" href="@here">here</a>',array('@here' => $library['download url'])),
-            'severity' => REQUIREMENT_WARNING
-          )  
-        );
+            'severity' => REQUIREMENT_INFO
+          );
       } else {
-        return array(
-          'jointjs' => array(
+        $messages['jointjs'] = array(
             'title' => t('JointJS Library'),
             'value' => $library['version'],
             'severity' => REQUIREMENT_OK
-          )
         );
       }
+      
+      $library = libraries_detect("springy");
+      if ( isset($library['error message']) ) {
+      	$messages['springy'] = array(
+      			'title' => t('Springy Library'),
+      			'value' => $library['error message'],
+      			'description' => t('Download Springy Version <a target="_blank" href="@here">here</a>',array('@here' => $library['download url'])),
+      			'severity' => REQUIREMENT_INFO
+      	);
+      } else {
+      	$messages['springy'] = array(
+      			'title' => t('Springy Library'),
+      			'value' => $library['version'],
+      			'severity' => REQUIREMENT_OK
+      	);
+      }
+      
+      return $messages ;
     break ;
   }
 }
