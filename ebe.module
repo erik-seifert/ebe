@@ -111,6 +111,7 @@ function ebe_menu_page($view = 'jointjs') {
     $library = libraries_detect('jointjs');
     libraries_load_files($library) ;
     drupal_add_js(drupal_get_path( 'module', 'ebe').'/js/drawer-erd.js');
+    drupal_add_css(drupal_get_path( 'module', 'ebe').'/css/joint.css');
     return "<div id='drawer' width='".$config['paper']['width']."' height='".$config['paper']['height']."'></div>" ;
   } elseif ( $view == 'springy' ) {
     $library = libraries_detect('springy');

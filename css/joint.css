@@ -1,0 +1,13 @@
+@CHARSET "UTF-8";
+
+.link.highlighted .connection {
+  stroke-width : 5;
+}
+
+.element.highlighted .uml-class-name-rect {
+  stroke-width : 5;
+}
+
+.highlighted {
+	opacity : 1;
+}
